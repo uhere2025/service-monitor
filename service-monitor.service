@@ -1,0 +1,17 @@
+[Unit]
+Description=Service Monitor Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=mimilo
+WorkingDirectory=/home/mimilo/dev/service-monitor
+ExecStart=/home/mimilo/dev/service-monitor/node_modules/.bin/tsx server/index.ts
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+# Allow tsx to resolve nvm node
+Environment=PATH=/home/mimilo/.nvm/versions/node/v24.14.1/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+[Install]
+WantedBy=multi-user.target
