@@ -15,6 +15,8 @@ const SERVICES: { name: string; type: ServiceType }[] = [
   { name: 'opencrawl', type: 'systemctl' },
   { name: 'openclaw-fay', type: 'docker' },
   { name: 'happy-safe-recorder', type: 'systemctl' },
+  { name: 'forgejo', type: 'docker' },
+  { name: 'forgejo-db', type: 'docker' },
 ]
 
 async function getSystemctlStatus(name: string): Promise<string> {
