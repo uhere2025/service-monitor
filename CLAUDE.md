@@ -9,7 +9,7 @@ npm run dev      # Express (tsx watch, port 8722) + Vite dev server (port 5173) 
 npm run build    # tsc -b && vite build → dist/
 npm start        # production: serve dist/ + API on :8722
 npm run lint     # eslint
-./install.sh     # copy service unit, enable + start systemd service (requires sudo)
+./install.sh     # render unit from template, install, enable + start systemd service (requires sudo)
 ```
 
 No test suite is configured.
@@ -26,4 +26,4 @@ This is a two-process app in development, single-process in production:
 
 **Production** — `npm run build` writes the frontend bundle to `dist/`. `npm start` runs the Express server which serves `dist/` as static files and handles `/api` routes, all on `:8722`.
 
-**Systemd** — `service-monitor.service` runs `tsx server/index.ts` directly (no build step needed at runtime) as user `mimilo`, with the nvm Node path baked into `Environment=PATH`.
+**Systemd** — `service-monitor.service.template` is the committed unit, with `__USER__`, `__WORKDIR__`, and `__NODE_BIN_DIR__` placeholders. `install.sh` fills them at install time (`whoami`, the repo dir, and the dir of the resolved `node`) to generate the gitignored `service-monitor.service`, which runs `tsx server/index.ts` directly (no build step needed at runtime).

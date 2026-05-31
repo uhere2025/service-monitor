@@ -1,10 +1,10 @@
 import express from 'express'
-import { exec } from 'child_process'
+import { execFile } from 'child_process'
 import { promisify } from 'util'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
-const execAsync = promisify(exec)
+const execFileAsync = promisify(execFile)
 const app = express()
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -13,7 +13,7 @@ type ServiceType = 'systemctl' | 'docker'
 const SERVICES: { name: string; type: ServiceType }[] = [
   { name: 'lms-server', type: 'systemctl' },
   { name: 'opencrawl', type: 'systemctl' },
-  { name: 'openclaw-fay', type: 'docker' },
+  { name: 'openclaw-docker-chromium-vnc-1', type: 'docker' },
   { name: 'happy-safe-recorder', type: 'systemctl' },
   { name: 'forgejo', type: 'docker' },
   { name: 'forgejo-db', type: 'docker' },
@@ -21,7 +21,7 @@ const SERVICES: { name: string; type: ServiceType }[] = [
 
 async function getSystemctlStatus(name: string): Promise<string> {
   try {
-    const { stdout } = await execAsync(`systemctl is-active ${name}`)
+    const { stdout } = await execFileAsync('systemctl', ['is-active', name])
     return stdout.trim()
   } catch (err: any) {
     // systemctl is-active exits non-zero for inactive/failed, stdout still has the state
@@ -31,8 +31,8 @@ async function getSystemctlStatus(name: string): Promise<string> {
 
 async function getDockerStatus(name: string): Promise<string> {
   try {
-    const { stdout } = await execAsync(`docker inspect --format='{{.State.Status}}' ${name}`)
-    return stdout.trim().replace(/'/g, '')
+    const { stdout } = await execFileAsync('docker', ['inspect', '--format={{.State.Status}}', name])
+    return stdout.trim()
   } catch {
     return 'not found'
   }
@@ -40,7 +40,7 @@ async function getDockerStatus(name: string): Promise<string> {
 
 async function getSystemctlLogs(name: string): Promise<string[]> {
   try {
-    const { stdout } = await execAsync(`journalctl -u ${name} -n 20 --no-pager --output=short-iso`)
+    const { stdout } = await execFileAsync('journalctl', ['-u', name, '-n', '20', '--no-pager', '--output=short-iso'])
     return stdout.trim().split('\n').filter(Boolean)
   } catch {
     return []
@@ -50,7 +50,7 @@ async function getSystemctlLogs(name: string): Promise<string[]> {
 async function getDockerLogs(name: string): Promise<string[]> {
   try {
     // docker logs writes to stderr even on success
-    const { stdout, stderr } = await execAsync(`docker logs --tail 20 --timestamps ${name}`)
+    const { stdout, stderr } = await execFileAsync('docker', ['logs', '--tail', '20', '--timestamps', name])
     const combined = (stderr + stdout).trim()
     return combined.split('\n').filter(Boolean)
   } catch (err: any) {
