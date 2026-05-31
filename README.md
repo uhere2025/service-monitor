@@ -5,7 +5,7 @@ A minimal dark-mode dashboard for monitoring systemd services and Docker contain
 ## Stack
 
 - **Frontend** — React 19 + MUI + Vite (TypeScript)
-- **Backend** — Express 5 server that shells out to `systemctl` / `docker`
+- **Backend** — Express 5 server that invokes `systemctl` / `docker` (via `execFile`, no shell)
 - **Runtime** — Node 24 via `tsx`
 
 ## Development
@@ -28,11 +28,12 @@ npm start         # serves dist/ + API on :8722
 ## Install as a systemd service
 
 ```bash
+npm install
 npm run build
 ./install.sh
 ```
 
-`install.sh` copies `service-monitor.service` to `/etc/systemd/system/`, enables it, and starts it. The unit runs as the `mimilo` user from the project directory.
+`install.sh` renders `service-monitor.service.template` into `service-monitor.service` — filling the `__USER__`, `__WORKDIR__`, and `__NODE_BIN_DIR__` placeholders from `whoami`, the project directory, and the resolved `node` path — then copies it to `/etc/systemd/system/`, enables it, and starts it. The unit runs `tsx server/index.ts` directly as the installing user, so `npm install` must have populated `node_modules/` first.
 
 Check status:
 
@@ -47,10 +48,12 @@ Services are hardcoded in `server/index.ts`:
 
 ```ts
 const SERVICES: { name: string; type: ServiceType }[] = [
-  { name: 'lms-server',          type: 'systemctl' },
-  { name: 'opencrawl',           type: 'systemctl' },
-  { name: 'openclaw-fay',        type: 'docker' },
-  { name: 'happy-safe-recorder', type: 'systemctl' },
+  { name: 'lms-server',                     type: 'systemctl' },
+  { name: 'opencrawl',                      type: 'systemctl' },
+  { name: 'openclaw-docker-chromium-vnc-1', type: 'docker' },
+  { name: 'happy-safe-recorder',            type: 'systemctl' },
+  { name: 'forgejo',                        type: 'docker' },
+  { name: 'forgejo-db',                     type: 'docker' },
 ]
 ```
 
