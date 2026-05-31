@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': 'http://localhost:8722',
+      '/api': `http://localhost:${process.env.PORT || 8822}`,
     },
   },
 })
