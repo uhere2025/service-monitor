@@ -1,22 +1,29 @@
 import { useEffect, useState } from 'react'
 import {
   Box,
+  Button,
   CircularProgress,
   CssBaseline,
   Dialog,
   DialogContent,
   DialogTitle,
   IconButton,
+  InputBase,
   ThemeProvider,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
   createTheme,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 import RefreshIcon from '@mui/icons-material/Refresh'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
+
+type ServiceType = 'systemctl' | 'docker'
 
 type ServiceStatus = {
   name: string
-  type: 'systemctl' | 'docker'
+  type: ServiceType
   status: string
   checkedAt: string
 }
@@ -52,6 +59,10 @@ export default function App() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [logState, setLogState] = useState<LogState | null>(null)
+  const [newName, setNewName] = useState('')
+  const [newType, setNewType] = useState<ServiceType>('systemctl')
+  const [formError, setFormError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   const openLogs = async (svc: ServiceStatus) => {
     setLogState({ svc, lines: null, loading: true, error: null })
@@ -80,6 +91,41 @@ export default function App() {
     }
   }
 
+  const addService = async () => {
+    const name = newName.trim()
+    if (!name) return
+    setSubmitting(true)
+    setFormError(null)
+    try {
+      const res = await fetch('/api/services', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, type: newType }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || `HTTP ${res.status}`)
+      }
+      setNewName('')
+      await fetchServices()
+    } catch (e: any) {
+      setFormError(e.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const deleteService = async (name: string) => {
+    if (!confirm(`Stop monitoring "${name}"?`)) return
+    try {
+      const res = await fetch(`/api/services/${encodeURIComponent(name)}`, { method: 'DELETE' })
+      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`)
+      await fetchServices()
+    } catch (e: any) {
+      setError(e.message)
+    }
+  }
+
   useEffect(() => {
     fetchServices()
     const interval = setInterval(fetchServices, POLL_INTERVAL)
@@ -103,6 +149,79 @@ export default function App() {
               ? `synced ${lastUpdate.toLocaleTimeString()} · ${POLL_INTERVAL / 1000}s interval· ${services.length} services`
               : 'connecting...'}
           </Typography>
+        </Box>
+
+        {/* Add service */}
+        <Box sx={{ mb: 3 }}>
+          <Box
+            component="form"
+            onSubmit={(e) => {
+              e.preventDefault()
+              addService()
+            }}
+            sx={{
+              display: 'flex',
+              gap: 1,
+              flexWrap: 'wrap',
+              alignItems: 'center',
+            }}
+          >
+            <InputBase
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="service name"
+              spellCheck={false}
+              sx={{
+                flex: '1 1 200px',
+                px: 1.5,
+                py: 0.75,
+                fontSize: 13,
+                color: '#ddd',
+                border: '1px solid #222',
+                borderRadius: 1,
+                background: '#0d0d0d',
+                '&:focus-within': { borderColor: '#444' },
+              }}
+            />
+            <ToggleButtonGroup
+              value={newType}
+              exclusive
+              size="small"
+              onChange={(_e, v) => v && setNewType(v)}
+              sx={{
+                '& .MuiToggleButton-root': {
+                  color: '#666',
+                  borderColor: '#222',
+                  fontSize: 11,
+                  textTransform: 'lowercase',
+                  px: 1.5,
+                  py: 0.5,
+                },
+                '& .Mui-selected': { color: '#ddd !important' },
+              }}
+            >
+              <ToggleButton value="systemctl">systemctl</ToggleButton>
+              <ToggleButton value="docker">docker</ToggleButton>
+            </ToggleButtonGroup>
+            <Button
+              type="submit"
+              disabled={submitting || !newName.trim()}
+              sx={{
+                color: '#22c55e',
+                borderColor: '#22c55e44',
+                fontSize: 12,
+                textTransform: 'lowercase',
+                minWidth: 64,
+              }}
+              variant="outlined"
+              size="small"
+            >
+              {submitting ? '...' : 'add'}
+            </Button>
+          </Box>
+          {formError && (
+            <Typography sx={{ fontSize: 11, color: '#ef4444', mt: 1 }}>✕ {formError}</Typography>
+          )}
         </Box>
 
         {error && (
@@ -163,6 +282,20 @@ export default function App() {
                     >
                       {svc.type}
                     </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteService(svc.name)
+                      }}
+                      sx={{
+                        color: '#333',
+                        p: 0.25,
+                        '&:hover': { color: '#ef4444' },
+                      }}
+                    >
+                      <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
                   </Box>
                   <Typography sx={{ fontSize: 14, fontWeight: 600, color: '#ddd', lineHeight: 1.2 }}>
                     {svc.name}

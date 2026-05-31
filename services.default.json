@@ -1,0 +1,6 @@
+[
+  { "name": "nginx", "type": "systemctl" },
+  { "name": "postgresql", "type": "systemctl" },
+  { "name": "redis", "type": "docker" },
+  { "name": "app-web", "type": "docker" }
+]
